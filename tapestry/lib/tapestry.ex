@@ -13,6 +13,8 @@ defmodule Tapestry do
       #list = insertNeighbour(x,list)
       Server.start_link([hashID,list])
     end)
+
+    Server.isnertNode()
   end
   def generateList(x) do
   #8 levels(row) and 16 (hex) cols
@@ -29,16 +31,6 @@ defmodule Tapestry do
  end
 
 
- def insertNeighbour(x,list) do
-      temp=:crypto.hash(:sha,Integer.to_string(x))|>Base.encode16 |>String.slice(0..7) # BDF23E
-      stringArray = String.codepoints(temp) # B D F 2 3 E
-        newList = Enum.reduce(0..7,list,fn(level,newList)->
-          IO.inspect(newList)
-          {t,_}=Integer.parse(Enum.at(stringArray,level),16)
-          List.replace_at(Enum.at(newList,level),t,temp)
-        end)
-        #IO.inspect(list)
-end
 end
 Tapestry.start
 
