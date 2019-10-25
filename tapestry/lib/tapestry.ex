@@ -10,12 +10,13 @@ defmodule Tapestry do
     #ets table to store list of process and its hashID {key,value}->{hashID,pid}
 
     :ets.insert(:hopCount,{"maxHop",0})
+    IO.puts("Starting Nodes...")
     temp=Enum.reduce(1..numNodes,[],fn(x,hashList)->
       hashID = :crypto.hash(:sha,Integer.to_string(x))|>Base.encode16 |>String.slice(0..7)
       Server.start_link([hashID,[],0])  # 0 is max hop initially
       hashList++[hashID]
     end)
-
+    IO.puts("Building Routing Tables...")
     Enum.each(1..numNodes, fn(x)->
       hashID = :crypto.hash(:sha,Integer.to_string(x))|>Base.encode16 |>String.slice(0..7)
       #spawn fn-> genList(temp,numNodes,x) end
@@ -41,6 +42,7 @@ defmodule Tapestry do
 
 
     #9E6A55B6
+    IO.puts("Passing requests from each node...")
      Enum.each(temp, fn(x)->
       main_id = Server.getProcessId(x)
       Enum.each(1..numRequest, fn(_req)->
@@ -48,14 +50,15 @@ defmodule Tapestry do
         if rand_node != x do
          # IO.inspect("#{x} : #{rand_node}")
           #GenServer.cast(main_id, {:searchHandler,x,rand_node,0,main_id})
-          Server.search(x,rand_node,0,main_id)
+          Task.async(fn-> Server.search(x,rand_node,0,main_id) end)
+          #Server.search(x,rand_node,0,main_id)
         end
 
       end)
 
     end)
     result=Server.getMaxHop()
-    IO.puts(result)
+    IO.puts("Maximum number of hops are: #{result}")
     System.halt(1)
 
 
