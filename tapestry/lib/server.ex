@@ -104,20 +104,19 @@ end
 # Search---------------------------
 
 def search(root, node,hops) do
-
+  #IO.inspect("#{root} : #{node}")
   level = findMaxPrefixMatch(root, node) #row
   stringArray = String.codepoints(node)
   char_val = Enum.at(stringArray,level)
   {char_pos,_} = Integer.parse(char_val,16) #col
-
   root_id = getProcessId(root)
   root_list = getListAt(root_id,level)
-  field = Enum.at(root_list,char_pos)
-
+  #field = Enum.at(root_list,char_pos)
+  field=Tapestry.findRoot(root_list,node,[],0,0)
   if field == node do
     IO.puts(hops)
   else
-    IO.puts(field)
+    #IO.inspect("field ---- #{field}")
     search(field,node,hops+1)
   end
 
@@ -169,11 +168,14 @@ def updateNewNodeTable(new_node,root_node_id,uptoLevel) do
   state = get_state(root_id)
   root_list = Enum.at(state,1)
   state=get_state(pid)
-  node_list = Enum.at(state,1)
+
 
   Enum.each(0..uptoLevel,fn(x)->
+    state=get_state(pid)
+    node_list = Enum.at(state,1)
     temp_list = Enum.at(root_list,x)
     new_list=List.replace_at(node_list,x,temp_list)
+    IO.inspect(new_list)
     GenServer.cast(pid,{:updateList,new_list})
   end)
 
@@ -237,5 +239,34 @@ end
        end)
     a
   end
+
+  def handle_cast({:genList,t,numNodes,i},state) do   #356A192B
+  codeString=:crypto.hash(:sha,Integer.to_string(i))|>Base.encode16 |>String.slice(0..7) # BDF23E
+  hashID=Enum.filter(t,fn x-> x != codeString end)
+
+  list = Enum.reduce(0..7,[],fn row,temp ->
+    difList=Enum.filter(hashID,fn x-> String.slice(codeString,0,row)==String.slice(x,0,row) and String.slice(codeString,0,row+1)!=String.slice(x,0,row+1) end)
+    final=Enum.reduce(0..15,[],fn col,some ->
+          coList=Enum.filter(difList,fn dif-> String.slice(dif,row,1) == Integer.to_string(col, 16) end)
+          if length(coList)<=1 do
+            put_list=List.first(coList)
+            some++[put_list]
+          else
+            put_list=findRoot(coList,codeString,[],0,0)
+            some++[put_list]
+          end
+    end)
+
+    stringArray = String.codepoints(codeString) # B D F 2 3 E
+    {t,_}=Integer.parse(Enum.at(stringArray,row),16)
+    final = List.replace_at(final,t,codeString)
+
+    temp= temp ++ [final]
+  end)
+  {:noreply,[codeString,list]}
+  #Server.start_link([codeString,list])
+end
+
+
 
 end

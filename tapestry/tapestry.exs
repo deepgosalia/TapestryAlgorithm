@@ -16,8 +16,8 @@ defmodule Tapestry do
     Enum.each(1..numNodes, fn(x)->
       hashID = :crypto.hash(:sha,Integer.to_string(x))|>Base.encode16 |>String.slice(0..7)
       #spawn fn-> genList(temp,numNodes,x) end
-
       genList(temp,numNodes,x)
+      
     end)
     to_find=:crypto.hash(:sha,Integer.to_string(numNodes+1))|>Base.encode16 |>String.slice(0..7)
     new_root=findRoot(temp,to_find,[],0,0)
@@ -31,23 +31,31 @@ defmodule Tapestry do
 
     startNode = Enum.at(temp, 1)
     endNode = :crypto.hash(:sha,Integer.to_string(div(numNodes+1,2)))|>Base.encode16 |>String.slice(0..7)
-    IO.inspect("#{startNode} : #{endNode}")
+    #IO.inspect("#{startNode} : #{endNode}")
     #IO.puts(startNode)
     Enum.each(temp,fn (e) ->
-     #Server.test_node(e)
+    # Server.test_node(e)
     end)
 
 
+    #9E6A55B6
      Enum.each(temp, fn(x)->
-      Enum.each(numRequest, fn(req)->
-        rand_node = 
+
+      Enum.each(1..numRequest, fn(req)->
+        rand_node = Enum.random(temp)
+
+        if rand_node != x do
+          IO.inspect("#{x} : #{rand_node}")
+          Server.search(x,rand_node,0)
+        end
+
       end)
 
     end)
 
 
 
-    Server.search(startNode,to_find,0)
+   # Server.search("91032AD7","F1ABD670",0)
 
 #91032AD7  9E6A55B6
     #IO.puts(new_root)

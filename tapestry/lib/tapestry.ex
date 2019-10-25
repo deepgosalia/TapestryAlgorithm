@@ -1,8 +1,8 @@
 defmodule Tapestry do
   def start() do
-    [numNodes, _numRequest] = System.argv()
+    [numNodes, numRequest] = System.argv()
     numNodes = String.to_integer(numNodes)-1   # we are creating first 99 nodes and then other 1 node
-    #_numRequest = String.to_integer(numRequest)
+    numRequest = String.to_integer(numRequest)
 
     :ets.new(:processTable,[:set,:public,:named_table])
     :ets.new(:network,[:set,:public,:named_table])
@@ -15,35 +15,47 @@ defmodule Tapestry do
 
     Enum.each(1..numNodes, fn(x)->
       hashID = :crypto.hash(:sha,Integer.to_string(x))|>Base.encode16 |>String.slice(0..7)
-      #spawn fn-> genList(temp,numNodes,x) end
-
-      genList(temp,numNodes,x)
+      spawn fn-> genList(temp,numNodes,x) end
+      Process.sleep(100)
+      #genList(temp,numNodes,x)
     end)
     to_find=:crypto.hash(:sha,Integer.to_string(numNodes+1))|>Base.encode16 |>String.slice(0..7)
     new_root=findRoot(temp,to_find,[],0,0)
-
+    temp = temp++[to_find]
     list = generateList(numNodes+1)
     #IO.inspect(list)
     Server.start_link([to_find,list])
-    IO.inspect(length(temp))
     level = Server.findMaxPrefixMatch(new_root, to_find)
     Server.insertnode(new_root,to_find,0)
     Server.ackMulticast(new_root,to_find,level)
 
     startNode = Enum.at(temp, 1)
     endNode = :crypto.hash(:sha,Integer.to_string(div(numNodes+1,2)))|>Base.encode16 |>String.slice(0..7)
-    IO.inspect("#{startNode} : #{endNode}")
+    #IO.inspect("#{startNode} : #{endNode}")
     #IO.puts(startNode)
     Enum.each(temp,fn (e) ->
-     #Server.test_node(e)
+    # Server.test_node(e)
     end)
 
 
-    # Enum.each(enumerable, fun)
+    #9E6A55B6
+     Enum.each(temp, fn(x)->
+
+      Enum.each(1..numRequest, fn(req)->
+        rand_node = Enum.random(temp)
+
+        if rand_node != x do
+          IO.inspect("#{x} : #{rand_node}")
+          Server.search(x,rand_node,0)
+        end
+
+      end)
+
+    end)
 
 
 
-    Server.search(startNode,to_find,0)
+   # Server.search("91032AD7","F1ABD670",0)
 
 #91032AD7  9E6A55B6
     #IO.puts(new_root)
