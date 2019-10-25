@@ -57,8 +57,8 @@ end
   #findRoot(root,insert_node)
 
   def insertnode(root,insert_node,ackFlag) do
-    IO.puts("here")
-    IO.inspect("#{root} : #{insert_node}")
+    #IO.puts("here")
+    #IO.inspect("#{root} : #{insert_node}")
    root_id = getProcessId(root)
    level = findMaxPrefixMatch(root, insert_node)
     root_list = getListAt(root_id,level)
@@ -101,7 +101,27 @@ end
    # go till last level
   end
 
+# Search---------------------------
 
+def search(root, node,hops) do
+
+  level = findMaxPrefixMatch(root, node) #row
+  stringArray = String.codepoints(node)
+  char_val = Enum.at(stringArray,level)
+  {char_pos,_} = Integer.parse(char_val,16) #col
+
+  root_id = getProcessId(root)
+  root_list = getListAt(root_id,level)
+  field = Enum.at(root_list,char_pos)
+
+  if field == node do
+    IO.puts(hops)
+  else
+    IO.puts(field)
+    search(field,node,hops+1)
+  end
+
+end
 
 
 
@@ -119,7 +139,7 @@ end
       temp_list = getListAt(root_id,x)
       Enum.each(temp_list, fn (ackElement) ->
           if ackElement != insert_node and (ackElement != root and ackElement != nil) do
-            IO.inspect("#{ackElement} : #{insert_node}")
+            #IO.inspect("#{ackElement} : #{insert_node}")
             insertnode(ackElement,insert_node,1)
             ackMulticast(ackElement,insert_node,level+1)
           end
@@ -141,8 +161,6 @@ end
 
 
   #here below we copy from root to node level------------------
-
-
 
 
 def updateNewNodeTable(new_node,root_node_id,uptoLevel) do

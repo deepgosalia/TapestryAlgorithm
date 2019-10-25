@@ -22,24 +22,30 @@ defmodule Tapestry do
     to_find=:crypto.hash(:sha,Integer.to_string(numNodes+1))|>Base.encode16 |>String.slice(0..7)
     new_root=findRoot(temp,to_find,[],0,0)
 
-    list = generateList(100)
+    list = generateList(numNodes+1)
     #IO.inspect(list)
     Server.start_link([to_find,list])
-    # pid = Server.getProcessId("B1D57811")
-    # state = Server.get_state(pid)
-    # IO.inspect(state)
+    IO.inspect(length(temp))
     level = Server.findMaxPrefixMatch(new_root, to_find)
-    IO.puts("here")
     Server.insertnode(new_root,to_find,0)
-
     Server.ackMulticast(new_root,to_find,level)
 
+    startNode = Enum.at(temp, 1)
+    endNode = :crypto.hash(:sha,Integer.to_string(div(numNodes+1,2)))|>Base.encode16 |>String.slice(0..7)
+    IO.inspect("#{startNode} : #{endNode}")
+    #IO.puts(startNode)
     Enum.each(temp,fn (e) ->
-      Server.test_node(e)
+     #Server.test_node(e)
     end)
 
 
+    # Enum.each(enumerable, fun)
 
+
+
+    Server.search(startNode,to_find,0)
+
+#91032AD7  9E6A55B6
     #IO.puts(new_root)
     loop()
   end
