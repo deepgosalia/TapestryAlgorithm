@@ -20,10 +20,18 @@ end
   #00000000000000000000000000000000000000000000000000000000000000000
   #below are the get and set functions--------------------------------
   def get_state(pid) do
-    state=GenServer.call(pid,:get_state)
+    state=GenServer.call(pid,:get_state,:infinity)
     state
   end
 
+  def getMaxHop() do
+    [{_,count}] = :ets.lookup(:hopCount,"maxHop")
+    count
+  end
+
+  def updateHop(newHop) do
+    :ets.insert(:hopCount,{"maxHop",newHop})
+  end
   def handle_call(:get_state,_from,state) do
     {:reply,state,state}
   end
@@ -41,8 +49,8 @@ end
   end
 
   def handle_cast({:updateList,list},state) do
-    [id,_list] = state
-    {:noreply,[id,list]}
+    [id,_list,hop] = state
+    {:noreply,[id,list,hop]}
   end
   #---------------------------------------------------------
 
@@ -78,7 +86,13 @@ end
      #add it there
      updateRootTable(insert_node,level,char_pos,root_id)
    else
-    node=findNodeWithMinDist(root,insert_node)
+    min_list = [field,insert_node]
+    node = Tapestry.findRoot(min_list,root,[],0,0)
+    if node == insert_node  do
+      updateRootTable(insert_node,level,char_pos,root_id)
+    end
+    #updateRootTable(insert_node,level,char_pos,root_id)
+    #node=findNodeWithMinDist(root,insert_node)
     #update value in its table
    end
 
@@ -105,25 +119,47 @@ end
 
 # Search---------------------------
 
-def search(root, node,hops) do
+def handle_cast({:searchHandler,x,rand_node,hops,main_id},state) do
+  search(x,rand_node,hops,main_id)
+  {:noreply,state}
+end
+
+def search(root,node,hops,main_id) do
   #IO.inspect("#{root} : #{node}")
   level = findMaxPrefixMatch(root, node) #row
-  stringArray = String.codepoints(node)
-  char_val = Enum.at(stringArray,level)
-  {char_pos,_} = Integer.parse(char_val,16) #col
+  #stringArray = String.codepoints(node)
+  #char_val = Enum.at(stringArray,level)
+  #{char_pos,_} = Integer.parse(char_val,16) #col
   root_id = getProcessId(root)
   root_list = getListAt(root_id,level)
   #field = Enum.at(root_list,char_pos)
   field=Tapestry.findRoot(root_list,node,[],0,0)
   if field == node do
-    IO.puts(hops)
+    #IO.inspect(main_node)
+    #IO.inspect(getProcessId(main_node))
+    # main_id = getProcessId(main_node)
+    #GenServer.cast(main_id,{:saveHopCount,hops})
+    maxHop = getMaxHop()
+    if(hops>maxHop) do
+      updateHop(hops)
+    end
+   # IO.puts(hops)
   else
     #IO.inspect("field ---- #{field}")
-    search(field,node,hops+1)
+    search(field,node,hops+1,main_id)
   end
 
 end
 
+def handle_cast({:saveHopCount,hops},state) do
+  [id,list,oldHop] = state
+  if oldHop < hops do
+    {:noreply,[id,list,hops]}
+  else
+    {:noreply,state}
+  end
+
+end
 
 
 
@@ -169,7 +205,7 @@ def updateNewNodeTable(new_node,root_node_id,uptoLevel) do
   root_id = getProcessId(root_node_id)
   state = get_state(root_id)
   root_list = Enum.at(state,1)
-  state=get_state(pid)
+  _state=get_state(pid)
 
 
   Enum.each(0..uptoLevel,fn(x)->
@@ -177,7 +213,7 @@ def updateNewNodeTable(new_node,root_node_id,uptoLevel) do
     node_list = Enum.at(state,1)
     temp_list = Enum.at(root_list,x)
     new_list=List.replace_at(node_list,x,temp_list)
-    IO.inspect(new_list)
+    #IO.inspect(new_list)
     GenServer.cast(pid,{:updateList,new_list})
   end)
 
@@ -192,11 +228,11 @@ end
     GenServer.cast(pid,{:update_node,node_value,level,col,pid})
   end
 
-  def handle_cast({:update_node,node_value,level,col,pid},state) do
+  def handle_cast({:update_node,node_value,level,col,_pid},state) do
     node_list = Enum.at(state,1)
     new_list=List.replace_at(Enum.at(node_list,level),col,node_value)
     new_temp =List.replace_at(node_list,level,new_list)
-    {:noreply,[Enum.at(state,0),new_temp]}
+    {:noreply,[Enum.at(state,0),new_temp,Enum.at(state,2)]}
   end
 
   #----------------------------------------------------
@@ -242,7 +278,7 @@ end
     a
   end
 
-  def handle_cast({:genList,t,numNodes,i},state) do   #356A192B
+  def handle_cast({:genList,t,_numNodes,i},state) do   #356A192B
   codeString=:crypto.hash(:sha,Integer.to_string(i))|>Base.encode16 |>String.slice(0..7) # BDF23E
   hashID=Enum.filter(t,fn x-> x != codeString end)
 
@@ -263,9 +299,9 @@ end
     {t,_}=Integer.parse(Enum.at(stringArray,row),16)
     final = List.replace_at(final,t,codeString)
 
-    temp= temp ++ [final]
+    _temp= temp ++ [final]
   end)
-  {:noreply,[codeString,list]}
+  {:noreply,[codeString,list,Enum.at(state,2)]}
   #Server.start_link([codeString,list])
 end
 end

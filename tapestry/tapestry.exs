@@ -6,11 +6,13 @@ defmodule Tapestry do
 
     :ets.new(:processTable,[:set,:public,:named_table])
     :ets.new(:network,[:set,:public,:named_table])
+    :ets.new(:hopCount,[:set,:public,:named_table])
     #ets table to store list of process and its hashID {key,value}->{hashID,pid}
 
+    :ets.insert(:hopCount,{"maxHop",0})
     temp=Enum.reduce(1..numNodes,[],fn(x,hashList)->
       hashID = :crypto.hash(:sha,Integer.to_string(x))|>Base.encode16 |>String.slice(0..7)
-      Server.start_link([hashID,[]])
+      Server.start_link([hashID,[],0])  # 0 is max hop initially
       hashList++[hashID]
     end)
 
@@ -26,34 +28,35 @@ defmodule Tapestry do
     temp = temp++[to_find]
     list = generateList(numNodes+1)
     #IO.inspect(list)
-    Server.start_link([to_find,list])
+    Server.start_link([to_find,list,0])
     level = Server.findMaxPrefixMatch(new_root, to_find)
     Server.insertnode(new_root,to_find,0)
     Server.ackMulticast(new_root,to_find,level)
 
-    startNode = Enum.at(temp, 1)
-    endNode = :crypto.hash(:sha,Integer.to_string(div(numNodes+1,2)))|>Base.encode16 |>String.slice(0..7)
+    #startNode = Enum.at(temp, 1)
+    #endNode = :crypto.hash(:sha,Integer.to_string(div(numNodes+1,2)))|>Base.encode16 |>String.slice(0..7)
     #IO.inspect("#{startNode} : #{endNode}")
     #IO.puts(startNode)
-    Enum.each(temp,fn (e) ->
-    # Server.test_node(e)
-    end)
+
 
 
     #9E6A55B6
      Enum.each(temp, fn(x)->
-
-      Enum.each(1..numRequest, fn(req)->
+      main_id = Server.getProcessId(x)
+      Enum.each(1..numRequest, fn(_req)->
         rand_node = Enum.random(temp)
-
         if rand_node != x do
-          IO.inspect("#{x} : #{rand_node}")
-          Server.search(x,rand_node,0)
+         # IO.inspect("#{x} : #{rand_node}")
+          #GenServer.cast(main_id, {:searchHandler,x,rand_node,0,main_id})
+          Server.search(x,rand_node,0,main_id)
         end
 
       end)
 
     end)
+    result=Server.getMaxHop()
+    IO.puts(result)
+    System.halt(1)
 
 
 
@@ -80,31 +83,31 @@ defmodule Tapestry do
  end
 
 
- def genList(t,numNodes,i) do   #356A192B
-  codeString=:crypto.hash(:sha,Integer.to_string(i))|>Base.encode16 |>String.slice(0..7) # BDF23E
-  hashID=Enum.filter(t,fn x-> x != codeString end)
+#  def genList(t,numNodes,i) do   #356A192B
+#   codeString=:crypto.hash(:sha,Integer.to_string(i))|>Base.encode16 |>String.slice(0..7) # BDF23E
+#   hashID=Enum.filter(t,fn x-> x != codeString end)
 
-  list = Enum.reduce(0..7,[],fn row,temp ->
-    difList=Enum.filter(hashID,fn x-> String.slice(codeString,0,row)==String.slice(x,0,row) and String.slice(codeString,0,row+1)!=String.slice(x,0,row+1) end)
-    final=Enum.reduce(0..15,[],fn col,some ->
-          coList=Enum.filter(difList,fn dif-> String.slice(dif,row,1) == Integer.to_string(col, 16) end)
-          if length(coList)<=1 do
-            put_list=List.first(coList)
-            some++[put_list]
-          else
-            put_list=findRoot(coList,codeString,[],0,0)
-            some++[put_list]
-          end
-    end)
+#   list = Enum.reduce(0..7,[],fn row,temp ->
+#     difList=Enum.filter(hashID,fn x-> String.slice(codeString,0,row)==String.slice(x,0,row) and String.slice(codeString,0,row+1)!=String.slice(x,0,row+1) end)
+#     final=Enum.reduce(0..15,[],fn col,some ->
+#           coList=Enum.filter(difList,fn dif-> String.slice(dif,row,1) == Integer.to_string(col, 16) end)
+#           if length(coList)<=1 do
+#             put_list=List.first(coList)
+#             some++[put_list]
+#           else
+#             put_list=findRoot(coList,codeString,[],0,0)
+#             some++[put_list]
+#           end
+#     end)
 
-    stringArray = String.codepoints(codeString) # B D F 2 3 E
-    {t,_}=Integer.parse(Enum.at(stringArray,row),16)
-    final = List.replace_at(final,t,codeString)
+#     stringArray = String.codepoints(codeString) # B D F 2 3 E
+#     {t,_}=Integer.parse(Enum.at(stringArray,row),16)
+#     final = List.replace_at(final,t,codeString)
 
-    temp= temp ++ [final]
-  end)
-  Server.start_link([codeString,list])
-end
+#     temp= temp ++ [final]
+#   end)
+#   Server.start_link([codeString,list])
+# end
 
 
  def findRoot(network_list,new_node,neigh_list,pos,added_weight) do  #new node = "86C8BF23"
