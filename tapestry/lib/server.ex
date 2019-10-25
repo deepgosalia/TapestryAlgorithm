@@ -14,7 +14,9 @@ defmodule Server do
   end
 
 
-
+def genList(temp,numNodes,x,pid) do
+  GenServer.cast(pid, {:genList,temp,numNodes,x})
+end
   #00000000000000000000000000000000000000000000000000000000000000000
   #below are the get and set functions--------------------------------
   def get_state(pid) do
@@ -252,7 +254,7 @@ end
             put_list=List.first(coList)
             some++[put_list]
           else
-            put_list=findRoot(coList,codeString,[],0,0)
+            put_list=Tapestry.findRoot(coList,codeString,[],0,0)
             some++[put_list]
           end
     end)
@@ -266,7 +268,4 @@ end
   {:noreply,[codeString,list]}
   #Server.start_link([codeString,list])
 end
-
-
-
 end

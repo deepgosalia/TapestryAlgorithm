@@ -10,14 +10,16 @@ defmodule Tapestry do
 
     temp=Enum.reduce(1..numNodes,[],fn(x,hashList)->
       hashID = :crypto.hash(:sha,Integer.to_string(x))|>Base.encode16 |>String.slice(0..7)
+      Server.start_link([hashID,[]])
       hashList++[hashID]
     end)
 
     Enum.each(1..numNodes, fn(x)->
       hashID = :crypto.hash(:sha,Integer.to_string(x))|>Base.encode16 |>String.slice(0..7)
-      spawn fn-> genList(temp,numNodes,x) end
-      Process.sleep(100)
-      #genList(temp,numNodes,x)
+      #spawn fn-> genList(temp,numNodes,x) end
+      pid = Server.getProcessId(hashID)
+      Server.genList(temp,numNodes,x,pid)
+
     end)
     to_find=:crypto.hash(:sha,Integer.to_string(numNodes+1))|>Base.encode16 |>String.slice(0..7)
     new_root=findRoot(temp,to_find,[],0,0)
