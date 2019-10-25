@@ -3,7 +3,7 @@ defmodule Server do
   def start_link(state) do
     {:ok,pid} = GenServer.start_link(__MODULE__,state) # [hashID,]
     hashID = Enum.at(state,0)
-    IO.inspect(pid)
+    #IO.inspect(pid)
    # IO.inspect(Enum.at(state, 1))
     :ets.insert(:processTable,{hashID,pid})
   end
@@ -56,18 +56,21 @@ end
   #to insert a single node with a given root-------------------
   #findRoot(root,insert_node)
 
-  def insertnode(root,insert_node) do
-
+  def insertnode(root,insert_node,ackFlag) do
+    IO.puts("here")
+    IO.inspect("#{root} : #{insert_node}")
    root_id = getProcessId(root)
    level = findMaxPrefixMatch(root, insert_node)
     root_list = getListAt(root_id,level)
     stringArray = String.codepoints(insert_node)
-   char_val = Enum.at(stringArray,level)
+    char_val = Enum.at(stringArray,level)
+   #IO.inspect(Integer.parse(char_val,16))
    {char_pos,_} = Integer.parse(char_val,16)
-
    field = Enum.at(root_list,char_pos)
 
-   updateNewNodeTable(insert_node,root,level)
+   if(ackFlag==0) do
+    updateNewNodeTable(insert_node,root,level)
+   end
 
    if(field==nil) do
      #add it there
@@ -79,10 +82,54 @@ end
 
    #ackmulticast
    #get updated root value
+  #  last = String.length(root)
+  # #  if nextLevel!=-1 do
+  # #    level = nextLevel
+  # #  end
+
+  #     Enum.each(level..last-1, fn(x)  ->
+  #       temp_list = getListAt(root_id,x)
+  #       Enum.each(temp_list, fn (ackElement) ->
+  #           if ackElement != root and ackElement != nil do
+  #             insertnode(ackElement,insert_node)
+  #           end
+  #         end)
+  #     end)
+
    #for each using enum.each send multicast to that node
    #there get id for that node and insertnode() without modifying the new node(so add flag)
    # go till last level
   end
+
+
+
+
+
+
+   #Ack Multicast----------------------------------------------
+
+   def ackMulticast(root,insert_node,level) do
+    last = String.length(root)
+    root_id = getProcessId(root)
+    # if addedLevel == 0 do
+    #   level = findMaxPrefixMatch(root, insert_node)
+    # end
+    if level<last do
+    Enum.each(level..last-1, fn(x)  ->
+      temp_list = getListAt(root_id,x)
+      Enum.each(temp_list, fn (ackElement) ->
+          if ackElement != insert_node and (ackElement != root and ackElement != nil) do
+            IO.inspect("#{ackElement} : #{insert_node}")
+            insertnode(ackElement,insert_node,1)
+            ackMulticast(ackElement,insert_node,level+1)
+          end
+        end)
+    end)
+  end
+
+   end
+
+   #----------------------------------------------------
 
 
   def test_node(hashID) do
@@ -91,13 +138,7 @@ end
     IO.inspect(Enum.at(state,1))
   end
 
-  #Ack Multicast----------------------------------------------
 
-  def ackMulticast(level) do
-
-  end
-
-  #----------------------------------------------------
 
   #here below we copy from root to node level------------------
 

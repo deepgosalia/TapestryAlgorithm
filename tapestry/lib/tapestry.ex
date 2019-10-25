@@ -19,16 +19,26 @@ defmodule Tapestry do
 
       genList(temp,numNodes,x)
     end)
-    new_root=findRoot(temp,"B1D57811",[],0,0)
-    list = generateList(10)
+    to_find=:crypto.hash(:sha,Integer.to_string(numNodes+1))|>Base.encode16 |>String.slice(0..7)
+    new_root=findRoot(temp,to_find,[],0,0)
+
+    list = generateList(100)
     #IO.inspect(list)
-    Server.start_link(["B1D57811",list])
+    Server.start_link([to_find,list])
     # pid = Server.getProcessId("B1D57811")
     # state = Server.get_state(pid)
     # IO.inspect(state)
-    Server.insertnode(new_root,"B1D57811")
-    Server.test_node("B1D57811")
-    Server.test_node(new_root)
+    level = Server.findMaxPrefixMatch(new_root, to_find)
+    IO.puts("here")
+    Server.insertnode(new_root,to_find,0)
+
+    Server.ackMulticast(new_root,to_find,level)
+
+    Enum.each(temp,fn (e) ->
+      Server.test_node(e)
+    end)
+
+
 
     #IO.puts(new_root)
     loop()
